@@ -9,8 +9,6 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")  # GitHub Secret
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")  # GitHub Secret
 # =================================================
 
-bot = Bot(token=TOKEN)
-
 def enviar_grafico():
     hoje = pd.Timestamp.today().strftime('%Y-%m-%d')
     
@@ -36,10 +34,8 @@ def enviar_grafico():
         print("DEBUG: colunas disponíveis:", btc.columns.tolist())
         return
 
-    # Remover linhas com valores ausentes
+    # Limpar dados inválidos
     btc = btc.dropna(subset=required_cols)
-
-    # Converter todas as colunas para float
     for col in required_cols:
         btc[col] = pd.to_numeric(btc[col], errors='coerce')
     btc = btc.dropna(subset=required_cols)
@@ -62,9 +58,11 @@ def enviar_grafico():
         savefig=filename
     )
 
-    # Enviar imagem via Telegram
+    # Enviar imagem via Telegram usando API síncrona
     try:
-        bot.send_photo(chat_id=CHAT_ID, photo=open(filename, "rb"), caption="📈 Gráfico diário do BTC")
+        bot = Bot(token=TOKEN)
+        with open(filename, "rb") as photo:
+            bot.send_photo(chat_id=CHAT_ID, photo=photo, caption="📈 Gráfico diário do BTC")
         print(f"Gráfico enviado: {filename}")
     except Exception as e:
         print(f"ERRO ao enviar mensagem: {e}")
