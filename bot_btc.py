@@ -15,19 +15,26 @@ def enviar_grafico():
     hoje = pd.Timestamp.today().strftime('%Y-%m-%d')
     
     # Baixar dados históricos do BTC
-    btc = yf.download("BTC-USD", start="2025-01-01", end=hoje, interval="1d")
-    
-    # Limpar linhas com valores ausentes
-    btc = btc.dropna(subset=['Open', 'High', 'Low', 'Close'])
+    btc = yf.download("BTC-USD", start="2025-01-01", end=hoje, interval="1d", auto_adjust=False)
+
+    # Verificar se as colunas necessárias existem
+    required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+    for col in required_cols:
+        if col not in btc.columns:
+            print(f"Erro: coluna {col} não encontrada nos dados.")
+            return
+
+    # Remover linhas com valores ausentes
+    btc = btc.dropna(subset=required_cols)
     
     # Garantir que todas as colunas estão como float
-    btc[['Open', 'High', 'Low', 'Close', 'Volume']] = btc[['Open', 'High', 'Low', 'Close', 'Volume']].astype(float)
-    
+    btc[required_cols] = btc[required_cols].astype(float)
+
     if btc.empty:
         print("Erro: dados não encontrados.")
         return
 
-    # Nome do arquivo com data para evitar sobrescrever
+    # Nome do arquivo com data
     filename = f"btc_candle_{pd.Timestamp.today().strftime('%Y%m%d')}.png"
 
     # Gerar gráfico de candles
