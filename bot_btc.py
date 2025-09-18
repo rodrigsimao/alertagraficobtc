@@ -5,8 +5,8 @@ import mplfinance as mpf
 from telegram import Bot
 
 # ================= Configurações =================
-TOKEN = os.environ.get("TELEGRAM_TOKEN")  # Pega do GitHub Secrets
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")  # Pega do GitHub Secrets
+TOKEN = os.environ.get("TELEGRAM_TOKEN")  # GitHub Secret
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")  # GitHub Secret
 # =================================================
 
 bot = Bot(token=TOKEN)
@@ -17,25 +17,35 @@ def enviar_grafico():
     # Baixar dados históricos do BTC
     btc = yf.download("BTC-USD", start="2025-01-01", end=hoje, interval="1d", auto_adjust=False)
 
-    # Verificar colunas necessárias
+    print("DEBUG: DataFrame baixado do yfinance:")
+    print(btc.head())
+    print("DEBUG: Colunas originais:", btc.columns.tolist())
+
+    # Se MultiIndex, simplificar
+    if isinstance(btc.columns, pd.MultiIndex):
+        btc.columns = btc.columns.get_level_values(0)
+        print("DEBUG: MultiIndex detectado, colunas simplificadas:", btc.columns.tolist())
+
+    # Colunas obrigatórias
     required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
-    for col in required_cols:
-        if col not in btc.columns:
-            print(f"Erro: coluna {col} não encontrada nos dados.")
-            return
+    
+    # Verificar se todas as colunas existem
+    missing_cols = [col for col in required_cols if col not in btc.columns]
+    if missing_cols:
+        print(f"ERRO: colunas ausentes: {missing_cols}")
+        print("DEBUG: colunas disponíveis:", btc.columns.tolist())
+        return
 
     # Remover linhas com valores ausentes
     btc = btc.dropna(subset=required_cols)
 
-    # Converter todas as colunas para float, valores inválidos viram NaN
+    # Converter todas as colunas para float
     for col in required_cols:
         btc[col] = pd.to_numeric(btc[col], errors='coerce')
-
-    # Remover novamente linhas que viraram NaN
     btc = btc.dropna(subset=required_cols)
 
     if btc.empty:
-        print("Erro: dados não encontrados após limpeza.")
+        print("ERRO: DataFrame vazio após limpeza.")
         return
 
     # Nome do arquivo diário
@@ -57,7 +67,7 @@ def enviar_grafico():
         bot.send_photo(chat_id=CHAT_ID, photo=open(filename, "rb"), caption="📈 Gráfico diário do BTC")
         print(f"Gráfico enviado: {filename}")
     except Exception as e:
-        print(f"Erro ao enviar mensagem: {e}")
+        print(f"ERRO ao enviar mensagem: {e}")
 
 if __name__ == "__main__":
     enviar_grafico()
